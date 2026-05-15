@@ -297,23 +297,35 @@
       values.forEach((value) => {
         const option = document.createElement("option");
         option.value = value;
-        option.textContent = formatDate(value);
+        option.textContent = value;
         dayFilter.appendChild(option);
       });
       dayFilter.value = values.includes(current) ? current : "";
     }
 
+    function uniqueSlotDays(rows) {
+      const seen = new Set();
+      return [...rows]
+        .sort((a, b) => (a.day || "").localeCompare(b.day || ""))
+        .map((row) => row.day_name || formatDate(row.day))
+        .filter((value) => {
+          if (!value || seen.has(value)) return false;
+          seen.add(value);
+          return true;
+        });
+    }
+
     function renderFilters() {
       fillSelect(teamFilter, uniqueValues(allRows.map((row) => row.signup?.team)), "Alle Mannschaften");
       fillSelect(stationFilter, uniqueValues(allRows.map((row) => row.location)), "Alle Stationen");
-      fillDaySelect(uniqueValues(allRows.map((row) => row.day)));
+      fillDaySelect(uniqueSlotDays(allRows));
     }
 
     function filteredRows() {
       return allRows.filter((row) => {
         if (teamFilter.value && row.signup?.team !== teamFilter.value) return false;
         if (stationFilter.value && row.location !== stationFilter.value) return false;
-        if (dayFilter.value && row.day !== dayFilter.value) return false;
+        if (dayFilter.value && (row.day_name || formatDate(row.day)) !== dayFilter.value) return false;
         return true;
       });
     }
@@ -342,7 +354,7 @@
         tr.className = row.is_taken ? "taken" : "free";
         const values = [
           row.is_taken ? "Belegt" : "Frei",
-          formatDate(row.day),
+          row.day_name || formatDate(row.day),
           formatTime(row.start, row.end),
           row.location || "",
           row.name || "",
@@ -361,7 +373,7 @@
     async function loadData() {
       const { data: slots, error: slotsError } = await db
         .from("slots")
-        .select("id, name, is_taken, day, location, start, end")
+        .select("id, name, is_taken, day, day_name, location, start, end")
         .order("day", { ascending: true })
         .order("start", { ascending: true });
 

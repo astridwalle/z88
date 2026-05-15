@@ -165,6 +165,54 @@
       font-weight: 600;
     }
 
+    .selected-slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafb;
+      padding: 8px;
+    }
+
+    .selected-slot {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      border: 1px solid #b8dbe6;
+      border-radius: 999px;
+      background: #eef8fb;
+      color: var(--text);
+      padding: 7px 8px 7px 12px;
+      font-size: 0.94rem;
+      font-weight: 700;
+    }
+
+    .selected-slot span {
+      overflow-wrap: anywhere;
+    }
+
+    .remove-slot {
+      display: inline-grid;
+      place-items: center;
+      width: 24px;
+      min-height: 24px;
+      border-radius: 50%;
+      padding: 0;
+      background: var(--accent);
+      color: #fff;
+      line-height: 1;
+      font-size: 1rem;
+    }
+
+    .slot-filters {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
     .hint {
       color: var(--muted);
       font-size: 0.92rem;
@@ -256,6 +304,10 @@
       .panel {
         padding: 18px;
       }
+
+      .slot-filters {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -298,7 +350,24 @@
 
         <div class="field">
           Freie Schichten
-          <span class="hint">Ausgewaehlte Schichten erscheinen oben.</span>
+          <span class="hint">Ausgewaehlte Schichten werden separat angezeigt und koennen mit x entfernt werden.</span>
+          <div id="selected-slots" class="selected-slots" aria-label="Ausgewaehlte Schichten">
+            <div class="slot-empty">Noch keine Schicht ausgewaehlt.</div>
+          </div>
+          <div class="slot-filters" aria-label="Schichten filtern">
+            <label>
+              Tag
+              <select id="slot-day-filter">
+                <option value="">Alle Tage</option>
+              </select>
+            </label>
+            <label>
+              Standort
+              <select id="slot-location-filter">
+                <option value="">Alle Standorte</option>
+              </select>
+            </label>
+          </div>
           <div id="slots" class="slot-list" role="group" aria-label="Freie Schichten">
             <div class="slot-empty">Lade freie Schichten...</div>
           </div>
@@ -326,6 +395,9 @@
     const nameInput = document.getElementById("parent-name");
     const teamInput = document.getElementById("team");
     const slotList = document.getElementById("slots");
+    const selectedSlotList = document.getElementById("selected-slots");
+    const slotDayFilter = document.getElementById("slot-day-filter");
+    const slotLocationFilter = document.getElementById("slot-location-filter");
     const submitButton = document.getElementById("submit-button");
     const message = document.getElementById("message");
     const editNote = document.getElementById("edit-note");
@@ -361,6 +433,39 @@
       return Array.from(selectedSlotSet);
     }
 
+    function uniqueValues(values) {
+      return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
+    }
+
+    function fillSelect(select, values, firstLabel) {
+      const current = select.value;
+      select.innerHTML = `<option value="">${firstLabel}</option>`;
+      values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+      select.value = values.includes(current) ? current : "";
+    }
+
+    function renderSlotFilters() {
+      fillSelect(slotDayFilter, uniqueSlotDays(availableSlots), "Alle Tage");
+      fillSelect(slotLocationFilter, uniqueValues(availableSlots.map((slot) => slot.location)), "Alle Standorte");
+    }
+
+    function uniqueSlotDays(slots) {
+      const seen = new Set();
+      return [...slots]
+        .sort((a, b) => (a.day || "").localeCompare(b.day || ""))
+        .map((slot) => slot.day_name || slot.day)
+        .filter((value) => {
+          if (!value || seen.has(value)) return false;
+          seen.add(value);
+          return true;
+        });
+    }
+
     function createToken() {
       const bytes = new Uint8Array(24);
       crypto.getRandomValues(bytes);
@@ -372,7 +477,7 @@
 
       const { data, error } = await db
         .from("signups")
-        .select("id, name, team, slot_id, edit_token, slots(id, name, day, location, start, end)")
+        .select("id, name, team, slot_id, edit_token, slots(id, name, day, day_name, location, start, end)")
         .eq("edit_token", activeToken)
         .order("created_at", { ascending: true });
 
@@ -395,7 +500,7 @@
     async function loadSlots(selectedIds = []) {
       let query = db
         .from("slots")
-        .select("id, name, is_taken, day, location, start, end")
+        .select("id, name, is_taken, day, day_name, location, start, end")
         .order("day", { ascending: true })
         .order("start", { ascending: true });
 
@@ -409,24 +514,77 @@
 
       availableSlots = data;
       selectedSlotSet = new Set(selectedIds);
+      renderSlotFilters();
+      renderSelectedSlots();
       renderSlotList();
+    }
+
+    function visibleSlots() {
+      return availableSlots.filter((slot) => {
+        if (slotDayFilter.value && (slot.day_name || slot.day) !== slotDayFilter.value) return false;
+        if (slotLocationFilter.value && slot.location !== slotLocationFilter.value) return false;
+        return true;
+      });
+    }
+
+    function renderSelectedSlots() {
+      selectedSlotList.innerHTML = "";
+
+      const selectedSlots = availableSlots
+        .filter((slot) => selectedSlotSet.has(slot.id))
+        .sort((a, b) => {
+          const aStart = a.start || `${a.day || ""}T00:00:00`;
+          const bStart = b.start || `${b.day || ""}T00:00:00`;
+          return aStart.localeCompare(bStart) || (a.name || "").localeCompare(b.name || "", "de");
+        });
+
+      if (!selectedSlots.length) {
+        const empty = document.createElement("div");
+        empty.className = "slot-empty";
+        empty.textContent = "Noch keine Schicht ausgewaehlt.";
+        selectedSlotList.appendChild(empty);
+        return;
+      }
+
+      selectedSlots.forEach((slot) => {
+        const pill = document.createElement("div");
+        pill.className = "selected-slot";
+
+        const label = document.createElement("span");
+        label.textContent = formatSlot(slot);
+
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.className = "remove-slot";
+        removeButton.setAttribute("aria-label", `${formatSlot(slot)} entfernen`);
+        removeButton.textContent = "x";
+        removeButton.addEventListener("click", () => {
+          selectedSlotSet.delete(slot.id);
+          renderSelectedSlots();
+          renderSlotList();
+        });
+
+        pill.append(label, removeButton);
+        selectedSlotList.appendChild(pill);
+      });
     }
 
     function renderSlotList() {
       slotList.innerHTML = "";
 
-      if (!availableSlots.length) {
+      const slots = visibleSlots();
+
+      if (!slots.length) {
         const empty = document.createElement("div");
         empty.className = "slot-empty";
-        empty.textContent = "Keine freien Schichten verfuegbar";
+        empty.textContent = availableSlots.length
+          ? "Keine freien Schichten fuer diese Filter."
+          : "Keine freien Schichten verfuegbar";
         slotList.appendChild(empty);
         return;
       }
 
-      const sortedSlots = [...availableSlots].sort((a, b) => {
-        const aSelected = selectedSlotSet.has(a.id);
-        const bSelected = selectedSlotSet.has(b.id);
-        if (aSelected !== bSelected) return aSelected ? -1 : 1;
+      const sortedSlots = [...slots].sort((a, b) => {
         const aStart = a.start || `${a.day || ""}T00:00:00`;
         const bStart = b.start || `${b.day || ""}T00:00:00`;
         return aStart.localeCompare(bStart) || (a.name || "").localeCompare(b.name || "", "de");
@@ -447,6 +605,7 @@
           } else {
             selectedSlotSet.delete(slot.id);
           }
+          renderSelectedSlots();
           renderSlotList();
         });
 
@@ -583,6 +742,8 @@
     }
 
     form.addEventListener("submit", saveSignup);
+    slotDayFilter.addEventListener("input", renderSlotList);
+    slotLocationFilter.addEventListener("input", renderSlotList);
     init();
   </script>
 </body>

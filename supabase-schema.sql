@@ -20,6 +20,19 @@ alter table public.signups
   add column if not exists created_at timestamp with time zone not null default now(),
   add column if not exists updated_at timestamp with time zone not null default now();
 
+alter table public.slots
+  add column if not exists day_name text;
+
+update public.slots
+set day_name = case day
+  when '2026-05-21'::date then 'Friday'
+  when '2026-05-22'::date then 'Saturday'
+  when '2026-05-23'::date then 'Sunday'
+  when '2026-05-24'::date then 'Monday'
+  else day_name
+end
+where day_name is null;
+
 create index if not exists signups_edit_token_idx on public.signups(edit_token);
 create index if not exists signups_slot_id_idx on public.signups(slot_id);
 

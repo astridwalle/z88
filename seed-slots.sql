@@ -12,22 +12,40 @@ on public.slots(day, location, start, "end", name);
 with schedule as (
   select *
   from (values
-    -- day, location, first_start, last_end, chunk_size, persons_required
-    ('2026-05-22'::date, 'Wannebar',      time '08:00', time '12:00', interval '1 hour',  2),
-    ('2026-05-22'::date, 'Wannebar',      time '12:00', time '20:00', interval '2 hours', 2),
-    ('2026-05-22'::date, 'Grill',         time '10:00', time '18:00', interval '2 hours', 2),
-    ('2026-05-22'::date, 'Kuchenverkauf', time '09:00', time '15:00', interval '1 hour',  1),
-    ('2026-05-22'::date, 'Getraenke',     time '08:00', time '20:00', interval '2 hours', 1),
+    -- day, day_name, location, first_start, last_end, chunk_size, persons_required
+    -- Important: the last row before the closing parenthesis must not have a trailing comma.
+    ('2026-05-21'::date, 'Freitag',   'Aufbau',             time '15:00', time '18:00', interval '3 hour',  15),
 
-    ('2026-05-23'::date, 'Wannebar',      time '08:00', time '19:00', interval '1 hour',  2),
-    ('2026-05-23'::date, 'Grill',         time '10:00', time '18:00', interval '2 hours', 2),
-    ('2026-05-23'::date, 'Kuchenverkauf', time '09:00', time '16:00', interval '1 hour',  1),
-    ('2026-05-23'::date, 'Getraenke',     time '08:00', time '19:00', interval '1 hour',  1)
-  ) as value(slot_day, location, first_start, last_end, chunk_size, persons_required)
+    ('2026-05-22'::date, 'Samstag', 'Wannebar',           time '08:30', time '18:30', interval '2 hour',  2),
+    ('2026-05-22'::date, 'Samstag', 'Kuchenstand',        time '08:30', time '18:30', interval '2 hours', 3),
+    ('2026-05-22'::date, 'Samstag', 'Getraenke',          time '08:30', time '18:30', interval '2 hours', 3),
+    ('2026-05-22'::date, 'Samstag', 'Slushi + Sandwich',  time '08:30', time '18:30', interval '2 hour',  3),
+    ('2026-05-22'::date, 'Samstag', 'Human Kicker',       time '16:00', time '18:00', interval '2 hours', 2),
+    ('2026-05-22'::date, 'Samstag', 'Tische abwischen',   time '07:00', time '09:00', interval '2 hours', 2),
+    ('2026-05-22'::date, 'Samstag', 'Tische abwischen',   time '12:30', time '14:30', interval '2 hours', 2),
+    ('2026-05-22'::date, 'Samstag', 'Tische abwischen',   time '19:00', time '21:00', interval '2 hours', 2),
+
+    ('2026-05-23'::date, 'Sonntag',   'Wannebar',           time '08:30', time '18:30', interval '2 hour',  2),
+    ('2026-05-23'::date, 'Sonntag',   'Kuchenstand',        time '08:30', time '18:30', interval '2 hours', 3),
+    ('2026-05-23'::date, 'Sonntag',   'Getraenke',          time '08:30', time '18:30', interval '2 hours', 3),
+    ('2026-05-23'::date, 'Sonntag',   'Slushi + Sandwich',  time '08:30', time '18:30', interval '2 hour',  3),
+    ('2026-05-23'::date, 'Sonntag',   'Human Kicker',       time '16:00', time '18:00', interval '2 hours', 2),
+    ('2026-05-23'::date, 'Sonntag',   'Tische abwischen',   time '07:00', time '09:00', interval '2 hours', 2),
+    ('2026-05-23'::date, 'Sonntag',   'Tische abwischen',   time '12:30', time '14:30', interval '2 hours', 2),
+    ('2026-05-23'::date, 'Sonntag',   'Tische abwischen',   time '19:00', time '21:00', interval '2 hours', 2),
+
+    ('2026-05-24'::date, 'Montag',   'Wannebar',           time '09:00', time '13:00', interval '2 hour',  2),
+    ('2026-05-24'::date, 'Montag',   'Kuchenstand',        time '09:00', time '13:00', interval '2 hours', 3),
+    ('2026-05-24'::date, 'Montag',   'Getraenke',          time '09:00', time '13:00', interval '2 hours', 3),
+    ('2026-05-24'::date, 'Montag',   'Slushi + Sandwich',  time '09:00', time '13:00', interval '2 hour',  3),
+
+    ('2026-05-24'::date, 'Montag',   'Abbau',              time '12:00', time '15:00', interval '3 hour',  15)
+  ) as value(slot_day, day_name, location, first_start, last_end, chunk_size, persons_required)
 ),
 chunks as (
   select
     slot_day,
+    day_name,
     location,
     person_no,
     start_at,
@@ -40,15 +58,16 @@ chunks as (
     chunk_size
   ) as series(start_at)
 )
-insert into public.slots (name, is_taken, day, location, start, "end")
+insert into public.slots (name, is_taken, day, day_name, location, start, "end")
 select
-  to_char(slot_day, 'YYYY-MM-DD') || ' ' ||
+  day_name || ' ' ||
     to_char(start_at, 'HH24:MI') || '-' ||
     to_char(end_at, 'HH24:MI') ||
     ' ' || location ||
     ' Slot ' || person_no as name,
   false as is_taken,
   slot_day,
+  day_name,
   location,
   start_at at time zone 'Europe/Berlin',
   end_at at time zone 'Europe/Berlin'
