@@ -80,6 +80,17 @@
       line-height: 1.5;
     }
 
+    .intro {
+      max-width: 760px;
+      font-size: clamp(1.05rem, 2vw, 1.2rem);
+      color: var(--text);
+    }
+
+    .intro span {
+      display: block;
+      margin-top: 8px;
+    }
+
     a {
       color: var(--accent);
       font-weight: 700;
@@ -320,7 +331,7 @@
         <img class="logo" src="./assets/z88-logo.png" alt="Z88" />
         <div>
           <h1>Standdienst</h1>
-          <p>Pro angemeldetem Kind bitte fuer mindesten zwei Schichten eintragen.</p>
+          <p class="intro">Damit unser Pfingstturnier funktioniert, brauchen wir <strong>die Hilfe aller Familien</strong>. Bitte tragt euch pro angemeldetem Kind fuer <strong>mindestens zwei Schichten</strong> ein.<span>Mehrere Slots mit gleicher Zeit bedeuten, dass mehrere Personen gleichzeitig an diesem Stand gebraucht werden.</span></p>
         </div>
       </div>
       <a class="secondary" href="./admin.html">Uebersicht</a>
@@ -333,6 +344,11 @@
         <label>
           Name des Kindes
           <input id="parent-name" name="parent-name" autocomplete="name" required />
+        </label>
+
+        <label>
+          E-Mail fuer den Bearbeitungslink
+          <input id="email" name="email" type="email" autocomplete="email" required />
         </label>
 
         <label>
@@ -362,9 +378,9 @@
               </select>
             </label>
             <label>
-              Standort
+              Standort / Dienst
               <select id="slot-location-filter">
-                <option value="">Alle Standorte</option>
+                <option value="">Alle Standorte / Dienste</option>
               </select>
             </label>
           </div>
@@ -375,7 +391,7 @@
 
         <div class="actions">
           <button id="submit-button" type="submit">Speichern</button>
-          <a class="secondary" id="new-signup-link" href="./index.html" hidden>Neue Anmeldung</a>
+          <a class="secondary" id="new-signup-link" href="./index.html" hidden>Weitere Anmeldung erstellen</a>
         </div>
 
         <div id="message" class="message" role="status"></div>
@@ -393,6 +409,7 @@
     let activeToken = params.get("token");
     const form = document.getElementById("signup-form");
     const nameInput = document.getElementById("parent-name");
+    const emailInput = document.getElementById("email");
     const teamInput = document.getElementById("team");
     const slotList = document.getElementById("slots");
     const selectedSlotList = document.getElementById("selected-slots");
@@ -477,7 +494,7 @@
 
       const { data, error } = await db
         .from("signups")
-        .select("id, name, team, slot_id, edit_token, slots(id, name, day, day_name, location, start, end)")
+        .select("id, name, email, team, slot_id, edit_token, slots(id, name, day, day_name, location, start, end)")
         .eq("edit_token", activeToken)
         .order("created_at", { ascending: true });
 
@@ -489,6 +506,7 @@
 
       currentSignupRows = data;
       nameInput.value = data[0].name || "";
+      emailInput.value = data[0].email || "";
       teamInput.value = data[0].team || "";
       submitButton.textContent = "Aenderung speichern";
       newSignupLink.hidden = false;
@@ -640,11 +658,33 @@
       return claimedSlotIds;
     }
 
+    async function sendEditLinkEmail(email, parentName, editUrl) {
+      const response = await fetch(`${window.APP_CONFIG.supabaseUrl}/functions/v1/send-edit-link`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: window.APP_CONFIG.supabasePublishableKey
+        },
+        body: JSON.stringify({
+          email,
+          name: parentName,
+          editUrl
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const detail = result.message || result.error?.message || result.error || response.statusText;
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+      }
+    }
+
     async function saveSignup(event) {
       event.preventDefault();
       clearMessage();
 
       const parentName = nameInput.value.trim();
+      const email = emailInput.value.trim();
       const team = teamInput.value.trim();
       const slotIds = selectedSlotIds();
 
@@ -668,7 +708,7 @@
         if (activeToken && keptSlotIds.length) {
           const { error: updateError } = await db
             .from("signups")
-            .update({ name: parentName, team })
+            .update({ name: parentName, email, team })
             .eq("edit_token", activeToken)
             .in("slot_id", keptSlotIds);
           if (updateError) throw updateError;
@@ -679,6 +719,7 @@
           const reusableRow = reusableRows[index];
           const rowData = {
             name: parentName,
+            email,
             team,
             slot_id: newSlotIds[index],
             edit_token: token
@@ -701,7 +742,7 @@
           for (const row of unusedRows) {
             const { error: updateError } = await db
               .from("signups")
-              .update({ name: parentName, team, slot_id: null, edit_token: token })
+              .update({ name: parentName, email, team, slot_id: null, edit_token: token })
               .eq("id", row.id);
             if (updateError) throw updateError;
           }
@@ -716,11 +757,17 @@
         editUrl.search = "";
         editUrl.searchParams.set("token", token);
 
-        setMessage(`Gespeichert. Bearbeitungslink: ${editUrl.toString()}`, "success");
         history.replaceState(null, "", editUrl);
         activeToken = token;
         const refreshedSlotIds = await loadCurrentSignup();
         await loadSlots(refreshedSlotIds);
+
+        try {
+          await sendEditLinkEmail(email, parentName, editUrl.toString());
+          setMessage(`Gespeichert. Der Bearbeitungslink wurde an ${email} gesendet. Bitte pruefe auch den Spam-Ordner auf eine E-Mail von z88.standdienst@cfdsolutions.net.`, "success");
+        } catch (emailError) {
+          setMessage(`Gespeichert, aber die E-Mail konnte nicht gesendet werden. Bearbeitungslink: ${editUrl.toString()}`, "error");
+        }
       } catch (error) {
         for (const slotId of claimedSlotIds) {
           await db.from("slots").update({ is_taken: false }).eq("id", slotId);
