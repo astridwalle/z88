@@ -85,7 +85,7 @@
 
     .filters {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
       margin-bottom: 16px;
       background: var(--panel);
@@ -222,6 +222,14 @@
           <option value="">Alle Tage</option>
         </select>
       </label>
+      <label>
+        Status
+        <select id="status-filter">
+          <option value="">Alle Status</option>
+          <option value="taken">Belegt</option>
+          <option value="free">Frei</option>
+        </select>
+      </label>
     </section>
 
     <section class="summary" aria-label="Zusammenfassung">
@@ -258,6 +266,7 @@
     const teamFilter = document.getElementById("team-filter");
     const stationFilter = document.getElementById("station-filter");
     const dayFilter = document.getElementById("day-filter");
+    const statusFilter = document.getElementById("status-filter");
     const totalCount = document.getElementById("total-count");
     const takenCount = document.getElementById("taken-count");
     const freeCount = document.getElementById("free-count");
@@ -326,6 +335,8 @@
         if (teamFilter.value && row.signup?.team !== teamFilter.value) return false;
         if (stationFilter.value && row.location !== stationFilter.value) return false;
         if (dayFilter.value && (row.day_name || formatDate(row.day)) !== dayFilter.value) return false;
+        if (statusFilter.value === "taken" && !row.is_taken) return false;
+        if (statusFilter.value === "free" && row.is_taken) return false;
         return true;
       });
     }
@@ -394,7 +405,7 @@
       renderRows();
     }
 
-    [teamFilter, stationFilter, dayFilter].forEach((input) => {
+    [teamFilter, stationFilter, dayFilter, statusFilter].forEach((input) => {
       input.addEventListener("input", renderRows);
     });
 

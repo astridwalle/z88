@@ -59,6 +59,61 @@ execute function public.set_updated_at();
 -- after insert on signups for each row
 -- execute function mark_slot_taken();
 
+-- Keep slots.is_taken consistent with signups.slot_id without changing signups.
+create or replace function public.sync_slot_taken_from_signups()
+returns trigger
+language plpgsql
+as $$
+begin
+  if tg_op = 'DELETE' then
+    if old.slot_id is not null then
+      update public.slots
+      set is_taken = exists (
+        select 1
+        from public.signups
+        where slot_id = old.slot_id
+      )
+      where id = old.slot_id;
+    end if;
+
+    return old;
+  end if;
+
+  if tg_op in ('INSERT', 'UPDATE') and new.slot_id is not null then
+    update public.slots
+    set is_taken = true
+    where id = new.slot_id;
+  end if;
+
+  if tg_op = 'UPDATE' and old.slot_id is not null and old.slot_id is distinct from new.slot_id then
+    update public.slots
+    set is_taken = exists (
+      select 1
+      from public.signups
+      where slot_id = old.slot_id
+    )
+    where id = old.slot_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_slot_taken_after_signup_change on public.signups;
+create trigger sync_slot_taken_after_signup_change
+after insert or update of slot_id or delete on public.signups
+for each row
+execute function public.sync_slot_taken_from_signups();
+
+-- One-time non-destructive repair. This changes only slots.is_taken and never
+-- modifies signups, so existing signup links remain valid.
+update public.slots
+set is_taken = exists (
+  select 1
+  from public.signups
+  where signups.slot_id = slots.id
+);
+
 alter table public.slots enable row level security;
 alter table public.signups enable row level security;
 

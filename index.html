@@ -688,6 +688,18 @@
       const team = teamInput.value.trim();
       const slotIds = selectedSlotIds();
 
+      if (!parentName) {
+        setMessage("Bitte gib den Namen des Kindes ein.", "error");
+        nameInput.focus();
+        return;
+      }
+
+      if (!team) {
+        setMessage("Bitte waehle eine Mannschaft aus.", "error");
+        teamInput.focus();
+        return;
+      }
+
       if (!slotIds.length) {
         setMessage("Bitte waehle mindestens eine Schicht aus.", "error");
         return;

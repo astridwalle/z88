@@ -19,6 +19,7 @@ with schedule as (
     ('2026-05-22'::date, 'Samstag', 'Wannebar',           time '08:30', time '18:30', interval '2 hour',  2),
     ('2026-05-22'::date, 'Samstag', 'Kuchenstand',        time '08:30', time '18:30', interval '2 hours', 3),
     ('2026-05-22'::date, 'Samstag', 'Getraenke',          time '08:30', time '18:30', interval '2 hours', 3),
+    ('2026-05-22'::date, 'Samstag', 'Getraenke',          time '18:30', time '20:30', interval '2 hours', 2),
     ('2026-05-22'::date, 'Samstag', 'Slushi + Sandwich',  time '08:30', time '18:30', interval '2 hour',  3),
     ('2026-05-22'::date, 'Samstag', 'Human Kicker',       time '16:00', time '18:00', interval '2 hours', 2),
     ('2026-05-22'::date, 'Samstag', 'Tische abwischen',   time '07:00', time '09:00', interval '2 hours', 2),
@@ -38,6 +39,7 @@ with schedule as (
     ('2026-05-24'::date, 'Montag',   'Kuchenstand',        time '09:00', time '13:00', interval '2 hours', 3),
     ('2026-05-24'::date, 'Montag',   'Getraenke',          time '09:00', time '13:00', interval '2 hours', 3),
     ('2026-05-24'::date, 'Montag',   'Slushi + Sandwich',  time '09:00', time '13:00', interval '2 hour',  3),
+    ('2026-05-23'::date, 'Montag',   'Tische abwischen',   time '07:00', time '09:00', interval '2 hours', 2),
 
     ('2026-05-24'::date, 'Montag',   'Abbau',              time '12:00', time '15:00', interval '3 hour',  15)
   ) as value(slot_day, day_name, location, first_start, last_end, chunk_size, persons_required)
