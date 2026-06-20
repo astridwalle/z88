@@ -1,10 +1,19 @@
--- Fill public.slots from granular schedule rows.
+-- Replace public.slots with the tournament schedule for 27-28 June 2026.
 -- Edit the schedule values before running this in the Supabase SQL editor.
 --
 -- Each schedule row creates one row per required person and time chunk.
 -- This supports different days, locations, opening hours, chunk sizes, and
 -- person counts. Add multiple rows for the same day/location if the chunk size
 -- changes during the day.
+
+begin;
+
+-- signups.slot_id references slots.id, so existing assignments must be removed
+-- before the old slots can be deleted.
+delete from public.signups
+where slot_id is not null;
+
+delete from public.slots;
 
 create unique index if not exists slots_unique_seed_idx
 on public.slots(day, location, start, "end", name);
@@ -13,35 +22,28 @@ with schedule as (
   select *
   from (values
     -- day, day_name, location, first_start, last_end, chunk_size, persons_required
+    -- Staffing counts not specified in the source information default to one person.
+    -- Each service window includes 30 minutes before and after for setup and cleanup.
+    -- During Saturday's ProLeague break, the Wannebar remains open with two people.
+    -- The Essensstand is a regular stand with three people, while
+    -- Getraenkeausgabe + Tischdienst is staffed only around meal times.
+    -- No generated shift is longer than two hours.
     -- Important: the last row before the closing parenthesis must not have a trailing comma.
-    ('2026-05-21'::date, 'Freitag',   'Aufbau',             time '15:00', time '18:00', interval '3 hour',  15),
+    ('2026-06-27'::date, 'Samstag', 'Wannebar',                         time '08:30', time '19:00', interval '2 hours', 2),
+    ('2026-06-27'::date, 'Samstag', 'Bastelstand',                      time '08:30', time '13:30', interval '2 hours', 1),
+    ('2026-06-27'::date, 'Samstag', 'Bastelstand',                      time '15:30', time '19:00', interval '2 hours', 1),
+    ('2026-06-27'::date, 'Samstag', 'Tombolastand',                     time '15:30', time '18:30', interval '2 hours', 2),
+    ('2026-06-27'::date, 'Samstag', 'Essensstand',                      time '06:30', time '13:30', interval '2 hours', 3),
+    ('2026-06-27'::date, 'Samstag', 'Essensstand',                      time '15:30', time '21:00', interval '2 hours', 3),
+    ('2026-06-27'::date, 'Samstag', 'Getraenkeausgabe + Tischdienst',  time '06:30', time '09:30', interval '2 hours', 3),
+    ('2026-06-27'::date, 'Samstag', 'Getraenkeausgabe + Tischdienst',  time '10:30', time '13:30', interval '2 hours', 3),
+    ('2026-06-27'::date, 'Samstag', 'Getraenkeausgabe + Tischdienst',  time '17:30', time '21:00', interval '2 hours', 3),
 
-    ('2026-05-22'::date, 'Samstag', 'Wannebar',           time '08:30', time '18:30', interval '2 hour',  2),
-    ('2026-05-22'::date, 'Samstag', 'Kuchenstand',        time '08:30', time '18:30', interval '2 hours', 3),
-    ('2026-05-22'::date, 'Samstag', 'Getraenke',          time '08:30', time '18:30', interval '2 hours', 3),
-    ('2026-05-22'::date, 'Samstag', 'Getraenke',          time '18:30', time '20:30', interval '2 hours', 2),
-    ('2026-05-22'::date, 'Samstag', 'Slushi + Sandwich',  time '08:30', time '18:30', interval '2 hour',  3),
-    ('2026-05-22'::date, 'Samstag', 'Human Kicker',       time '16:00', time '18:00', interval '2 hours', 2),
-    ('2026-05-22'::date, 'Samstag', 'Tische abwischen',   time '07:00', time '09:00', interval '2 hours', 2),
-    ('2026-05-22'::date, 'Samstag', 'Tische abwischen',   time '12:30', time '14:30', interval '2 hours', 2),
-    ('2026-05-22'::date, 'Samstag', 'Tische abwischen',   time '19:00', time '21:00', interval '2 hours', 2),
-
-    ('2026-05-23'::date, 'Sonntag',   'Wannebar',           time '08:30', time '18:30', interval '2 hour',  2),
-    ('2026-05-23'::date, 'Sonntag',   'Kuchenstand',        time '08:30', time '18:30', interval '2 hours', 3),
-    ('2026-05-23'::date, 'Sonntag',   'Getraenke',          time '08:30', time '18:30', interval '2 hours', 3),
-    ('2026-05-23'::date, 'Sonntag',   'Slushi + Sandwich',  time '08:30', time '18:30', interval '2 hour',  3),
-    ('2026-05-23'::date, 'Sonntag',   'Human Kicker',       time '16:00', time '18:00', interval '2 hours', 2),
-    ('2026-05-23'::date, 'Sonntag',   'Tische abwischen',   time '07:00', time '09:00', interval '2 hours', 2),
-    ('2026-05-23'::date, 'Sonntag',   'Tische abwischen',   time '12:30', time '14:30', interval '2 hours', 2),
-    ('2026-05-23'::date, 'Sonntag',   'Tische abwischen',   time '19:00', time '21:00', interval '2 hours', 2),
-
-    ('2026-05-24'::date, 'Montag',   'Wannebar',           time '09:00', time '13:00', interval '2 hour',  2),
-    ('2026-05-24'::date, 'Montag',   'Kuchenstand',        time '09:00', time '13:00', interval '2 hours', 3),
-    ('2026-05-24'::date, 'Montag',   'Getraenke',          time '09:00', time '13:00', interval '2 hours', 3),
-    ('2026-05-24'::date, 'Montag',   'Slushi + Sandwich',  time '09:00', time '13:00', interval '2 hour',  3),
-    ('2026-05-23'::date, 'Montag',   'Tische abwischen',   time '07:00', time '09:00', interval '2 hours', 2),
-
-    ('2026-05-24'::date, 'Montag',   'Abbau',              time '12:00', time '15:00', interval '3 hour',  15)
+    ('2026-06-28'::date, 'Sonntag', 'Wannebar',                         time '07:30', time '12:00', interval '2 hours', 2),
+    ('2026-06-28'::date, 'Sonntag', 'Bastelstand',                      time '07:30', time '12:00', interval '2 hours', 1),
+    ('2026-06-28'::date, 'Sonntag', 'Essensstand',                      time '06:30', time '13:30', interval '2 hours', 3),
+    ('2026-06-28'::date, 'Sonntag', 'Getraenkeausgabe + Tischdienst',  time '06:30', time '09:30', interval '2 hours', 3),
+    ('2026-06-28'::date, 'Sonntag', 'Getraenkeausgabe + Tischdienst',  time '10:30', time '13:30', interval '2 hours', 3)
   ) as value(slot_day, day_name, location, first_start, last_end, chunk_size, persons_required)
 ),
 chunks as (
@@ -77,3 +79,5 @@ from chunks
 where start_at < end_at
 order by slot_day, start_at, location, person_no
 on conflict (day, location, start, "end", name) do nothing;
+
+commit;
