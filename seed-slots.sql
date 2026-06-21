@@ -29,21 +29,23 @@ with schedule as (
     -- Getraenkeausgabe + Tischdienst is staffed only around meal times.
     -- No generated shift is longer than two hours.
     -- Important: the last row before the closing parenthesis must not have a trailing comma.
-    ('2026-06-27'::date, 'Samstag', 'Wannebar',                         time '08:30', time '19:00', interval '2 hours', 2),
-    ('2026-06-27'::date, 'Samstag', 'Bastelstand',                      time '08:30', time '13:30', interval '2 hours', 1),
-    ('2026-06-27'::date, 'Samstag', 'Bastelstand',                      time '15:30', time '19:00', interval '2 hours', 1),
-    ('2026-06-27'::date, 'Samstag', 'Tombolastand',                     time '15:30', time '18:30', interval '2 hours', 2),
-    ('2026-06-27'::date, 'Samstag', 'Essensstand',                      time '06:30', time '13:30', interval '2 hours', 3),
-    ('2026-06-27'::date, 'Samstag', 'Essensstand',                      time '15:30', time '21:00', interval '2 hours', 3),
-    ('2026-06-27'::date, 'Samstag', 'Getraenkeausgabe + Tischdienst',  time '06:30', time '09:30', interval '2 hours', 3),
-    ('2026-06-27'::date, 'Samstag', 'Getraenkeausgabe + Tischdienst',  time '10:30', time '13:30', interval '2 hours', 3),
-    ('2026-06-27'::date, 'Samstag', 'Getraenkeausgabe + Tischdienst',  time '17:30', time '21:00', interval '2 hours', 3),
+    ('2026-06-27'::date, 'Samstag', 'Wannebar',                         time '08:30', time '16:30', interval '2 hours', 2),
+    ('2026-06-27'::date, 'Samstag', 'Wannebar',                         time '16:30', time '19:00', interval '2.5 hours', 2),
+    ('2026-06-27'::date, 'Samstag', 'Wannebar - Grillen',                         time '10:30', time '16:30', interval '2 hours', 2),
+    ('2026-06-27'::date, 'Samstag', 'Wannebar - Grillen',                         time '16:30', time '19:00', interval '2.5 hours', 2),    
+    ('2026-06-27'::date, 'Samstag', 'Bastelstand (Wanne)',                      time '08:30', time '13:30', interval '2.5 hours', 1),
+    ('2026-06-27'::date, 'Samstag', 'Bastelstand (Wanne)',                      time '15:30', time '18:30', interval '3 hours', 1),
+    ('2026-06-27'::date, 'Samstag', 'Essensstand (gegenueber Wannebar)',                      time '08:30', time '13:00', interval '1.5 hours', 3),
+    ('2026-06-27'::date, 'Samstag', 'Essensstand (gegenueber Wannebar)',                      time '15:30', time '18:30', interval '1.5 hours', 3),
+    ('2026-06-27'::date, 'Samstag', 'Getraenkeausgabe + Tischdienst (Clubhaus)',  time '07:00', time '09:00', interval '2 hours', 2),
+    ('2026-06-27'::date, 'Samstag', 'Getraenkeausgabe + Tischdienst (Clubhaus)',  time '11:00', time '13:00', interval '2 hours', 3),
+    ('2026-06-27'::date, 'Samstag', 'Getraenkeausgabe + Tischdienst (Clubhaus)',  time '18:00', time '20:00', interval '2 hours', 3),
 
-    ('2026-06-28'::date, 'Sonntag', 'Wannebar',                         time '07:30', time '12:00', interval '2 hours', 2),
-    ('2026-06-28'::date, 'Sonntag', 'Bastelstand',                      time '07:30', time '12:00', interval '2 hours', 1),
-    ('2026-06-28'::date, 'Sonntag', 'Essensstand',                      time '06:30', time '13:30', interval '2 hours', 3),
-    ('2026-06-28'::date, 'Sonntag', 'Getraenkeausgabe + Tischdienst',  time '06:30', time '09:30', interval '2 hours', 3),
-    ('2026-06-28'::date, 'Sonntag', 'Getraenkeausgabe + Tischdienst',  time '10:30', time '13:30', interval '2 hours', 3)
+    ('2026-06-28'::date, 'Sonntag', 'Wannebar',                         time '08:00', time '12:00', interval '2 hours', 2),
+    ('2026-06-28'::date, 'Sonntag', 'Bastelstand (Wanne)',                      time '08:00', time '12:00', interval '2 hours', 1),
+    ('2026-06-28'::date, 'Sonntag', 'Essensstand (gegenueber Wannebar)',                      time '07:30', time '12:30', interval '2.5 hours', 3),
+    ('2026-06-28'::date, 'Sonntag', 'Getraenkeausgabe + Tischdienst (Clubhaus)',  time '07:00', time '09:00', interval '2 hours', 3),
+    ('2026-06-28'::date, 'Sonntag', 'Getraenkeausgabe + Tischdienst (Clubhaus)',  time '11:00', time '13:00', interval '2 hours', 3)
   ) as value(slot_day, day_name, location, first_start, last_end, chunk_size, persons_required)
 ),
 chunks as (
